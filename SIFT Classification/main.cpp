@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
     Sift sift;
     vector<vector<Mat> > pyr;
     sift.buildGaussianPyramid(gimg, pyr, 4);
+    sift.buildDogPyr(pyr);
     waitKey(0);
     return 0;
 }

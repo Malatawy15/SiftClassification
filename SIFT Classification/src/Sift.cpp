@@ -79,6 +79,14 @@ Mat Sift::downSample(Mat& image)
 
 vector<vector<Mat> > Sift::buildDogPyr(vector<vector<Mat> > gauss_pyr)
 {
+    vector<vector<Mat> > dog_pyr;
+    for (int i = 0; i < gauss_pyr.size(); ++i) {
+        dog_pyr.push_back(vector<Mat>());
+        for (int j = 0; j < gauss_pyr[i].size() - 1; ++j) {
+            dog_pyr[i].push_back(gauss_pyr[i][j] - gauss_pyr[i][j+1]);
+        }
+    }
+    return dog_pyr;
 }
 
 vector<double> Sift::computeOrientationHist(const Mat& image)
