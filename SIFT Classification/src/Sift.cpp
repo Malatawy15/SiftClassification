@@ -55,8 +55,10 @@ void Sift::buildGaussianPyramid(Mat& image, vector< vector <Mat> >& pyr, int nOc
             pyr[i].push_back(new_img);
             sigma *= blurring_factor;
         }
-        pyr.push_back(vector<Mat>());
-        pyr[i+1].push_back(downSample(pyr[i][1]));
+        if (i+1 < nOctaves) {
+            pyr.push_back(vector<Mat>());
+            pyr[i+1].push_back(downSample(pyr[i][1]));
+        }
     }
 }
 
@@ -93,6 +95,9 @@ vector<vector<Mat> > Sift::buildDogPyr(vector<vector<Mat> > gauss_pyr)
     vector<KeyPoint> k;
     getScaleSpaceExtrema(dog_pyr, k);
     // <\test_code>
+    imshow("img_above", dog_pyr[1][0]);
+    imshow("img", dog_pyr[1][1]);
+    imshow("img_below", dog_pyr[1][2]);
     return dog_pyr;
 }
 
@@ -105,32 +110,42 @@ void Sift::getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>&
 {
     for (int i = 0; i < dog_pyr.size(); i++) {
         for (int j = 1; j < dog_pyr[i].size() - 1; j++) {
-            Mat myMat = Mat::zeros(dog_pyr[i][j].size(), dog_pyr[i][j].type());
             for (int r = 1; r < dog_pyr[i][j].rows - 1; r++) {
                 for (int c = 1; c < dog_pyr[i][j].cols - 1; c++) {
                     if (isLocalExtrema(dog_pyr[i][j - 1], dog_pyr[i][j], dog_pyr[i][j + 1], r, c)) {
-                        float dx = (float) (dog_pyr[i][j].at<uchar>(r + 1,c) - dog_pyr[i][j].at<uchar>(r - 1,c));
-                        float dy = (float) (dog_pyr[i][j].at<uchar>(r,c + 1) - dog_pyr[i][j].at<uchar>(r,c - 1));
+                        float dx = ((float) dog_pyr[i][j].at<uchar>(r + 1,c) - (float) dog_pyr[i][j].at<uchar>(r - 1,c));
+                        float dy = ((float) dog_pyr[i][j].at<uchar>(r,c + 1) - (float) dog_pyr[i][j].at<uchar>(r,c - 1));
+                        //cout<<"dx: "<<dx<<" dy:"<<dy<<endl;
                         float orientation = (float) atan(dy/dx);
                         float magnitude = (float) sqrt((dx*dx) + (dy*dy));
-                        KeyPoint key_point(r, c, 3, orientation, magnitude, i);
+                        KeyPoint key_point(r, c, 3, orientation, magnitude, i + 1);
                         keypoints.push_back(key_point);
                     }
                 }
             }
-            imshow("lena", myMat);
         }
     }
+    Mat myMat = Mat::zeros(dog_pyr[1][0].size(), dog_pyr[1][0].type());
+    for (int i = 0; i < keypoints.size(); i++) {
+        if (keypoints[i].octave == 2) {
+            myMat.at<uchar>(keypoints[i].pt.x, keypoints[i].pt.y) = keypoints[i].response;
+            cout<< keypoints[i].response<<endl;
+        }
+    }
+    imshow("bla", myMat);
+
 }
 
 bool Sift::isLocalExtrema(Mat& img_above, Mat& img, Mat& img_below, int x, int y) {
     int dx[9] = {-1,0,1,-1,0,1,-1, 0, 1};
     int dy[9] = { 1,1,1, 0,0,0,-1,-1,-1};
-    uchar val = img.at<uchar>(x,y);
+    int dx_same_level[9] = {-1,0,1,-1,-1,1,-1, 0, 1};
+    int dy_same_level[9] = { 1,1,1, 0, 1,0,-1,-1,-1};
+    int val = (int) img.at<uchar>(x,y);
     for (int i = 0; i < ARRAY_SIZE(dx); i++) {
-        if (img.at<uchar>(x + dx[i], y + dy[y]) > val ||
-            img_above.at<uchar>(x + dx[i], y + dy[y]) > val ||
-            img_below.at<uchar>(x + dx[i], y + dy[y]) > val) {
+        if ((int) img.at<uchar>(x + dx_same_level[i], y + dy_same_level[i]) >= val ||
+            (int) img_above.at<uchar>(x + dx[i], y + dy[i]) >= val ||
+            (int) img_below.at<uchar>(x + dx[i], y + dy[i]) >= val) {
                 return false;
             }
     }
