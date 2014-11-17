@@ -24,6 +24,7 @@ class Sift
         void getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoints);
     protected:
     private:
+        bool isLocalExtrema(Mat& img_above, Mat& img, Mat& img_below, int x, int y);
 };
 
 #endif // SIFT_H

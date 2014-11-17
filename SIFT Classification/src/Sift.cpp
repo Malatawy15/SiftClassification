@@ -6,6 +6,9 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include<iostream>
+#include <math.h>
+
+#define ARRAY_SIZE(array) (sizeof((array))/sizeof((array[0])))
 
 using namespace cv;
 using namespace std;
@@ -36,7 +39,7 @@ Sift::~Sift()
     //dtor
 }
 
-void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>& keypoints)
+void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>&  )
 {
 }
 
@@ -86,6 +89,10 @@ vector<vector<Mat> > Sift::buildDogPyr(vector<vector<Mat> > gauss_pyr)
             dog_pyr[i].push_back(gauss_pyr[i][j] - gauss_pyr[i][j+1]);
         }
     }
+    // <test_code>
+    vector<KeyPoint> k;
+    getScaleSpaceExtrema(dog_pyr, k);
+    // <\test_code>
     return dog_pyr;
 }
 
@@ -96,4 +103,36 @@ vector<double> Sift::computeOrientationHist(const Mat& image)
 // Calculates the gradient vector of the feature
 void Sift::getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoints)
 {
+    for (int i = 0; i < dog_pyr.size(); i++) {
+        for (int j = 1; j < dog_pyr[i].size() - 1; j++) {
+            Mat myMat = Mat::zeros(dog_pyr[i][j].size(), dog_pyr[i][j].type());
+            for (int r = 1; r < dog_pyr[i][j].rows - 1; r++) {
+                for (int c = 1; c < dog_pyr[i][j].cols - 1; c++) {
+                    if (isLocalExtrema(dog_pyr[i][j - 1], dog_pyr[i][j], dog_pyr[i][j + 1], r, c)) {
+                        float dx = (float) (dog_pyr[i][j].at<uchar>(r + 1,c) - dog_pyr[i][j].at<uchar>(r - 1,c));
+                        float dy = (float) (dog_pyr[i][j].at<uchar>(r,c + 1) - dog_pyr[i][j].at<uchar>(r,c - 1));
+                        float orientation = (float) atan(dy/dx);
+                        float magnitude = (float) sqrt((dx*dx) + (dy*dy));
+                        KeyPoint key_point(r, c, 3, orientation, magnitude, i);
+                        keypoints.push_back(key_point);
+                    }
+                }
+            }
+            imshow("lena", myMat);
+        }
+    }
+}
+
+bool Sift::isLocalExtrema(Mat& img_above, Mat& img, Mat& img_below, int x, int y) {
+    int dx[9] = {-1,0,1,-1,0,1,-1, 0, 1};
+    int dy[9] = { 1,1,1, 0,0,0,-1,-1,-1};
+    uchar val = img.at<uchar>(x,y);
+    for (int i = 0; i < ARRAY_SIZE(dx); i++) {
+        if (img.at<uchar>(x + dx[i], y + dy[y]) > val ||
+            img_above.at<uchar>(x + dx[i], y + dy[y]) > val ||
+            img_below.at<uchar>(x + dx[i], y + dy[y]) > val) {
+                return false;
+            }
+    }
+    return true;
 }
