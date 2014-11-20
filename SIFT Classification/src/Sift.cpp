@@ -7,6 +7,7 @@
 
 #include<iostream>
 #include <math.h>
+#include<algorithm>
 
 #define ARRAY_SIZE(array) (sizeof((array))/sizeof((array[0])))
 
@@ -17,6 +18,8 @@ using namespace std;
 int blur_levels = 5;
 double initial_sigma = 1.6;
 double blurring_factor = 1.41421;
+double intensity_threshold = 0.03;
+int principal_curvature_threshold = 10;
 
 Size gaussian_kernel_size(3,3);
 
@@ -62,8 +65,38 @@ void Sift::buildGaussianPyramid(Mat& image, vector< vector <Mat> >& pyr, int nOc
     }
 }
 
-void Sift::cleanPoints(Mat& image, int curv_thr)
+double edge_ratio(Mat& image, KeyPoint kp)
 {
+    Point p = kp.pt;
+    double dx = ((float) image.at<uchar>(p.x + 1, p.y) - (float) image.at<uchar>(p.x - 1, p.y));
+    double dy = ((float) image.at<uchar>(p.x, p.y + 1) - (float) image.at<uchar>(p.x, p.y - 1));
+    double dxx = dx * dx;
+    double dyy = dy * dy;
+    double dxy = dx * dy;
+    double thr = dxx + dyy;
+    double det = dxx * dyy - dxy*dxy;
+    cout<<"dxx: "<<dxx<<endl;
+    cout<<"dyy: "<<dyy<<endl;
+    cout<<"dxy: "<<dxy<<endl;
+    cout<<"thr: "<<thr<<endl;
+    cout<<"det: "<<det<<endl;
+    cout<<"Ratio: "<<thr * thr / det<<endl;
+    return thr * thr / det;
+}
+
+void Sift::cleanPoints(Mat& image, vector<KeyPoint>& keypoints, int curv_thr)
+{
+    cout<<"Size: "<<keypoints.size()<<endl;
+    vector<KeyPoint>::iterator it = keypoints.begin();
+    while (it != keypoints.end()){
+        if (abs(it->response) < intensity_threshold || edge_ratio(image, *it) > (curv_thr+1.0)*(curv_thr+1.0)/curv_thr) {
+            it = keypoints.erase(it);
+        }
+        else {
+            it++;
+        }
+    }
+    cout<<"Size: "<<keypoints.size()<<endl;
 }
 
 //based on contrast //and principal curvature ratio

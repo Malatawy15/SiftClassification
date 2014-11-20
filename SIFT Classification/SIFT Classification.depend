@@ -24,7 +24,7 @@
 1415985770 /home/malatawy15/GUC/Semester 9/Computer Vision/Project/SIFT Classification/include/Sift.h
 	<cv.h>
 
-1416169343 source:/home/malatawy15/GUC/Semester 9/Computer Vision/Project/SiftClassification/SIFT Classification/main.cpp
+1416487063 source:/home/malatawy15/GUC/Semester 9/Computer Vision/Project/SiftClassification/SIFT Classification/main.cpp
 	<cv.h>
 	<opencv2/core/core.hpp>
 	<opencv2/imgproc/imgproc.hpp>
@@ -32,15 +32,17 @@
 	<iostream>
 	<Sift.h>
 
-1416169319 source:/home/malatawy15/GUC/Semester 9/Computer Vision/Project/SiftClassification/SIFT Classification/src/Sift.cpp
+1416487027 source:/home/malatawy15/GUC/Semester 9/Computer Vision/Project/SiftClassification/SIFT Classification/src/Sift.cpp
 	"Sift.h"
 	<cv.h>
 	<opencv2/core/core.hpp>
 	<opencv2/imgproc/imgproc.hpp>
 	<opencv2/highgui/highgui.hpp>
 	<iostream>
+	<math.h>
+	<algorithm>
 
-1416075882 /home/malatawy15/GUC/Semester 9/Computer Vision/Project/SiftClassification/SIFT Classification/include/Sift.h
+1416487051 /home/malatawy15/GUC/Semester 9/Computer Vision/Project/SiftClassification/SIFT Classification/include/Sift.h
 	<cv.h>
 
 1416226140 source:/home/amr/Documents/Projects/SiftClassification/SIFT Classification/main.cpp
