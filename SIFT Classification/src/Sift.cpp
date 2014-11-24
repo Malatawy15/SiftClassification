@@ -14,12 +14,14 @@
 using namespace cv;
 using namespace std;
 
-// TODO define the number of blur levels
 int blur_levels = 5;
 double initial_sigma = 1.6;
 double blurring_factor = 1.41421;
 double intensity_threshold = 0.03;
 int principal_curvature_threshold = 10;
+int num_of_octaves = 4;
+// TODO: add vavlue to curv_thr
+int curv_thr = 0;
 
 Size gaussian_kernel_size(3,3);
 
@@ -42,8 +44,13 @@ Sift::~Sift()
     //dtor
 }
 
-void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>&  )
+void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>& keypoints)
 {
+    vector<vector<Mat> > gauss_pyr;
+    buildGaussianPyramid(image, gauss_pyr, num_of_octaves);
+    vector<vector<Mat> > dog_pyr = buildDogPyr(gauss_pyr);
+    getScaleSpaceExtrema(dog_pyr, keypoints);
+    cleanPoints(image, keypoints, curv_thr);
 }
 
 void Sift::buildGaussianPyramid(Mat& image, vector< vector <Mat> >& pyr, int nOctaves)
@@ -75,12 +82,6 @@ double edge_ratio(Mat& image, KeyPoint kp)
     double dxy = dx * dy;
     double thr = dxx + dyy;
     double det = dxx * dyy - dxy*dxy;
-    cout<<"dxx: "<<dxx<<endl;
-    cout<<"dyy: "<<dyy<<endl;
-    cout<<"dxy: "<<dxy<<endl;
-    cout<<"thr: "<<thr<<endl;
-    cout<<"det: "<<det<<endl;
-    cout<<"Ratio: "<<thr * thr / det<<endl;
     return thr * thr / det;
 }
 
@@ -158,14 +159,14 @@ void Sift::getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>&
             }
         }
     }
-    Mat myMat = Mat::zeros(dog_pyr[1][0].size(), dog_pyr[1][0].type());
+    // Test code showing pre-pruning keypoints
+    /*Mat myMat = Mat::zeros(dog_pyr[1][0].size(), dog_pyr[1][0].type());
     for (int i = 0; i < keypoints.size(); i++) {
         if (keypoints[i].octave == 2) {
-            myMat.at<uchar>(keypoints[i].pt.x, keypoints[i].pt.y) = keypoints[i].response;
-            cout<< keypoints[i].response<<endl;
+            myMat.at<uchar>(keypoints[i].pt.x, keypoints[i].pt.y) = 255;
         }
     }
-    imshow("bla", myMat);
+    imshow("bla", myMat);*/
 
 }
 
