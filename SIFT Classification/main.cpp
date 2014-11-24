@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     sift.buildGaussianPyramid(gimg, pyr, 4);
     dog = sift.buildDogPyr(pyr);
     sift.getScaleSpaceExtrema(dog, kp);
-    sift.cleanPoints(gimg, kp, 0);
+    sift.cleanPoints(gimg, kp, 10);
     waitKey(0);
     return 0;
 }

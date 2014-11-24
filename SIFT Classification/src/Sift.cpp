@@ -65,31 +65,36 @@ void Sift::buildGaussianPyramid(Mat& image, vector< vector <Mat> >& pyr, int nOc
     }
 }
 
-double edge_ratio(Mat& image, KeyPoint kp)
+double edge_ratio(Mat& dxxi, Mat& dxyi, Mat& dyyi, KeyPoint kp)
 {
     Point p = kp.pt;
-    double dx = ((float) image.at<uchar>(p.x + 1, p.y) - (float) image.at<uchar>(p.x - 1, p.y));
-    double dy = ((float) image.at<uchar>(p.x, p.y + 1) - (float) image.at<uchar>(p.x, p.y - 1));
-    double dxx = dx * dx;
-    double dyy = dy * dy;
-    double dxy = dx * dy;
+    double dxx = (double) dxxi.at<uchar> (p.x, p.y);
+    double dyy = (double) dyyi.at<uchar> (p.x, p.y);
+    double dxy = (double) dxyi.at<uchar> (p.x, p.y);;
     double thr = dxx + dyy;
     double det = dxx * dyy - dxy*dxy;
-    cout<<"dxx: "<<dxx<<endl;
+    /*cout<<"dxx: "<<dxx<<endl;
     cout<<"dyy: "<<dyy<<endl;
     cout<<"dxy: "<<dxy<<endl;
     cout<<"thr: "<<thr<<endl;
     cout<<"det: "<<det<<endl;
-    cout<<"Ratio: "<<thr * thr / det<<endl;
-    return thr * thr / det;
+    cout<<"Ratio: "<<thr * thr / det<<endl;*/
+    return det==0? 2000000000.0:thr * thr / det;
 }
 
 void Sift::cleanPoints(Mat& image, vector<KeyPoint>& keypoints, int curv_thr)
 {
     cout<<"Size: "<<keypoints.size()<<endl;
+    Mat dxxi, dxyi, dyyi;
+    Sobel(image, dxxi, CV_16S, 2, 0);
+    Sobel(image, dyyi, CV_16S, 0, 2);
+    Sobel(image, dxyi, CV_16S, 1, 1);
     vector<KeyPoint>::iterator it = keypoints.begin();
+    double principal_curvature_threshold_value = ((curv_thr+1.0)*(curv_thr+1.0)/curv_thr);
     while (it != keypoints.end()){
-        if (abs(it->response) < intensity_threshold || edge_ratio(image, *it) > (curv_thr+1.0)*(curv_thr+1.0)/curv_thr) {
+        double intensity_value = (double)image.at<uchar>(it->pt.x, it->pt.y) / 255.0;
+        double edge_ratio_value = edge_ratio(dxxi, dxyi, dyyi, *it);
+        if ((intensity_value < intensity_threshold) || (edge_ratio_value > principal_curvature_threshold_value)) {
             it = keypoints.erase(it);
         }
         else {
