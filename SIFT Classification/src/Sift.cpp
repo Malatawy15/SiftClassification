@@ -20,8 +20,7 @@ double blurring_factor = 1.41421;
 double intensity_threshold = 0.03;
 int principal_curvature_threshold = 10;
 int num_of_octaves = 4;
-// TODO: add vavlue to curv_thr
-int curv_thr = 0;
+int curv_thr = 10;
 
 Size gaussian_kernel_size(3,3);
 
@@ -51,6 +50,18 @@ void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>& keypoints)
     vector<vector<Mat> > dog_pyr = buildDogPyr(gauss_pyr);
     getScaleSpaceExtrema(dog_pyr, keypoints);
     cleanPoints(image, keypoints, curv_thr);
+    cout<<"here";
+    for (int i = 0; i < keypoints.size(); i++) {
+        vector<double> res;
+        bool success = computeOrientationHist(image, keypoints.at(i).pt.x, keypoints.at(i).pt.y, res);
+        cout<<success<<endl;
+        if (success) {
+        cout<<"res.size: "<<res.size()<<endl;
+            for (int j = 0; j < res.size(); j++) {
+                cout<<res.at(j)<<", ";
+            }
+        }
+    }
 }
 
 void Sift::buildGaussianPyramid(Mat& image, vector< vector <Mat> >& pyr, int nOctaves)
@@ -140,11 +151,47 @@ vector<vector<Mat> > Sift::buildDogPyr(vector<vector<Mat> > gauss_pyr)
     return dog_pyr;
 }
 
-vector<double> Sift::computeOrientationHist(const Mat& image)
+bool Sift::computeOrientationHist(const Mat& image, int x, int y, vector<double> descriptor)
 {
+    int maxX = image.size().width;
+    int maxY = image.size().height;
+    if (x < 8 || x > maxX - 8 || y < 8 || y > maxY - 8) {
+        return false;
+    } else {
+        int block_count_x = 0;
+        for (int i = x - 7; block_count_x < 4; i += 4) {
+            int block_count_y = 0;
+            for (int j = x + 7; block_count_y < 4; y += 4) {
+                vector<double> partial_result = computePartialHistogram(image, i, j);
+                for (int k = 0; k < partial_result.size(); k++) {
+                    descriptor.push_back(partial_result.at(k));
+                }
+                block_count_y++;
+            }
+            block_count_x++;
+        }
+        return true;
+    }
 }
 
-// Calculates the gradient vector of the feature
+vector<double> Sift::computePartialHistogram(const Mat& image, int x, int y)
+{
+    vector<double> result;
+    for (int i = 0; i < 8; i++) {
+        result.push_back(0.0);
+    }
+    for (int i = x; i < x + 4; i++) {
+        for (int j = y; j < y + 4; j++) {
+            double dx = ((double) image.at<uchar>(i + 1,j) - (double) image.at<uchar>(i - 1,j));
+            double dy = ((double) image.at<uchar>(i,j + 1) - (double) image.at<uchar>(i,j - 1));
+            double orientation = (double) atan(dy/dx);
+            double magnitude = (double) sqrt((dx*dx) + (dy*dy));
+            result.at((int) orientation/45) += magnitude;
+        }
+    }
+    return result;
+}
+
 void Sift::getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoints)
 {
     for (int i = 0; i < dog_pyr.size(); i++) {

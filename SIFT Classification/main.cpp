@@ -20,12 +20,14 @@ int main(int argc, char *argv[])
     namedWindow("lena", CV_WINDOW_AUTOSIZE );
     imshow("lena", gimg);
     Sift sift;
-    vector<vector<Mat> > pyr, dog;
+    vector<KeyPoint> kp;
+    sift.findSiftInterestPoint(gimg, kp);
+    /*vector<vector<Mat> > pyr, dog;
     vector<KeyPoint> kp;
     sift.buildGaussianPyramid(gimg, pyr, 4);
     dog = sift.buildDogPyr(pyr);
     sift.getScaleSpaceExtrema(dog, kp);
-    sift.cleanPoints(gimg, kp, 10);
+    sift.cleanPoints(gimg, kp, 10);*/
     waitKey(0);
     return 0;
 }
