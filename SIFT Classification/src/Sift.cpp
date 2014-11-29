@@ -14,14 +14,6 @@
 using namespace cv;
 using namespace std;
 
-// TODO define the number of blur levels
-int blur_levels = 5;
-double initial_sigma = 1.41421;
-double blurring_factor = 2;
-double intensity_threshold = 0.003;
-int principal_curvature_threshold = 10;
-int number_of_octaves = 4;
-
 Size gaussian_kernel_size(3,3);
 
 Sift::Sift()
@@ -37,10 +29,10 @@ Sift::~Sift()
 void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>& keypoints)
 {
     vector<vector<Mat> > pyr;
-    buildGaussianPyramid(image, pyr, number_of_octaves);
+    buildGaussianPyramid(image, pyr, Sift::number_of_octaves);
     vector<vector<Mat> > dog_pyramid = buildDogPyr(pyr);
     getScaleSpaceExtrema(dog_pyramid, keypoints);
-    cleanPoints(dog_pyramid, keypoints, principal_curvature_threshold);
+    cleanPoints(dog_pyramid, keypoints, Sift::principal_curvature_threshold);
 }
 
 void Sift::buildGaussianPyramid(Mat& image, vector<vector<Mat> >& pyr, int nOctaves)
@@ -48,12 +40,12 @@ void Sift::buildGaussianPyramid(Mat& image, vector<vector<Mat> >& pyr, int nOcta
     pyr.push_back(vector<Mat>());
     pyr[0].push_back(image);
     for (int i = 0; i < nOctaves; ++i) {
-        double sigma = initial_sigma;
-        for (int j = 1; j < blur_levels; ++j) {
+        double sigma = Sift::initial_sigma;
+        for (int j = 1; j < Sift::blur_levels; ++j) {
             Mat new_img = Mat::zeros(pyr[i][j-1].size(), CV_32F);
             GaussianBlur(pyr[i][j-1], new_img, gaussian_kernel_size, sigma, 0);
             pyr[i].push_back(new_img);
-            sigma *= blurring_factor;
+            sigma *= Sift::blurring_factor;
             //namedWindow("lena", CV_WINDOW_AUTOSIZE );
             //imshow("lena", new_img);
             //waitKey(0);
@@ -153,7 +145,7 @@ void Sift::cleanPoints(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoint
     double principal_curvature_threshold_value = ((curv_thr+1.0)*(curv_thr+1.0)/curv_thr);
     while (it != keypoints.end()){
         float intensity_value = abs(dog_pyr[it->octave][it->class_id].at<float>(it->pt.x, it->pt.y));
-        if (intensity_value < intensity_threshold){
+        if (intensity_value < Sift::intensity_threshold){
             it = keypoints.erase(it);
         }
         else {
@@ -188,6 +180,55 @@ void Sift::cleanPoints(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoint
     cout<<"Size Final: "<<keypoints.size()<<endl;
 }
 
-vector<double> Sift::computeOrientationHist(const Mat& image)
+vector<double> Sift::computeOrientationHist(const Mat& image, vector<KeyPoint>& keypoints)
 {
+    vector<double> result;
+    for (int i = 0;i < keypoints.size(); ++i) {
+        vector<double>res;
+        if(computeOrientationHistAtPoint(image, keypoints[i].pt.x, keypoints[i].pt.y, res)) {
+            result.insert(result.end(), res.begin(), res.end());
+        }
+    }
+    return result;
+}
+
+bool Sift::computeOrientationHistAtPoint(const Mat& image, int x, int y, vector<double>& descriptor)
+{
+    int maxX = image.size().width;
+    int maxY = image.size().height;
+    if (x < 8 || x > maxX - 8 || y < 8 || y > maxY - 8) {
+        return false;
+    } else {
+        int block_count_x = 0;
+        for (int i = x - 7; block_count_x < 4; i += 4) {
+            int block_count_y = 0;
+            for (int j = x + 7; block_count_y < 4; y += 4) {
+                vector<double> partial_result = computePartialHistogram(image, i, j);
+                for (int k = 0; k < partial_result.size(); k++) {
+                    descriptor.push_back(partial_result.at(k));
+                }
+                block_count_y++;
+            }
+            block_count_x++;
+        }
+        return true;
+    }
+}
+
+vector<double> Sift::computePartialHistogram(const Mat& image, int x, int y)
+{
+    vector<double> result;
+    for (int i = 0; i < 8; i++) {
+        result.push_back(0.0);
+    }
+    for (int i = x; i < x + 4; i++) {
+        for (int j = y; j < y + 4; j++) {
+            double dx = ((double) image.at<uchar>(i + 1,j) - (double) image.at<uchar>(i - 1,j));
+            double dy = ((double) image.at<uchar>(i,j + 1) - (double) image.at<uchar>(i,j - 1));
+            double orientation = (double) atan(dy/dx);
+            double magnitude = (double) sqrt((dx*dx) + (dy*dy));
+            result.at((int) orientation/45) += magnitude;
+        }
+    }
+    return result;
 }
