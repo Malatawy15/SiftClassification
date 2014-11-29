@@ -14,8 +14,8 @@
 				<Compiler>
 					<Add option="-g" />
 					<Add directory="include" />
-					<Add directory="/home/malatawy15/OpenCV/opencv-2.4.9/include/opencv" />
-					<Add directory="/home/malatawy15/OpenCV/opencv-2.4.9/include/opencv2" />
+					<Add directory="/home/amr/Documents/OpenCV/opencv-2.4.9/include/opencv" />
+					<Add directory="/home/amr/Documents/OpenCV/opencv-2.4.9/include/opencv2" />
 				</Compiler>
 				<Linker>
 					<Add library="/usr/local/lib/libopencv_calib3d.so" />
@@ -34,7 +34,6 @@
 					<Add library="/usr/local/lib/libopencv_photo.so" />
 					<Add library="/usr/local/lib/libopencv_stitching.so" />
 					<Add library="/usr/local/lib/libopencv_superres.so" />
-					<Add library="/usr/local/lib/libopencv_ts.a" />
 					<Add library="/usr/local/lib/libopencv_video.so" />
 					<Add library="/usr/local/lib/libopencv_videostab.so" />
 				</Linker>
@@ -47,7 +46,6 @@
 				<Compiler>
 					<Add option="-O2" />
 					<Add option="-s" />
-					<Add directory="include" />
 				</Compiler>
 			</Target>
 		</Build>
