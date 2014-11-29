@@ -16,10 +16,11 @@ using namespace std;
 
 // TODO define the number of blur levels
 int blur_levels = 5;
-double initial_sigma = 1.6;
-double blurring_factor = 1.41421;
-double intensity_threshold = 0.03;
+double initial_sigma = 1.41421;
+double blurring_factor = 2;
+double intensity_threshold = 0.003;
 int principal_curvature_threshold = 10;
+int number_of_octaves = 4;
 
 Size gaussian_kernel_size(3,3);
 
@@ -28,35 +29,34 @@ Sift::Sift()
     //ctor
 }
 
-Sift::Sift(string image_path, bool is_color)
-{
-    if (is_color) {
-        input_image = imread("lena.jpg", CV_LOAD_IMAGE_COLOR);
-    } else {
-        input_image = imread("lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-    }
-}
-
 Sift::~Sift()
 {
     //dtor
 }
 
-void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>&  )
+void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>& keypoints)
 {
+    vector<vector<Mat> > pyr;
+    buildGaussianPyramid(image, pyr, number_of_octaves);
+    vector<vector<Mat> > dog_pyramid = buildDogPyr(pyr);
+    getScaleSpaceExtrema(dog_pyramid, keypoints);
+    cleanPoints(dog_pyramid, keypoints, principal_curvature_threshold);
 }
 
-void Sift::buildGaussianPyramid(Mat& image, vector< vector <Mat> >& pyr, int nOctaves)
+void Sift::buildGaussianPyramid(Mat& image, vector<vector<Mat> >& pyr, int nOctaves)
 {
     pyr.push_back(vector<Mat>());
     pyr[0].push_back(image);
     for (int i = 0; i < nOctaves; ++i) {
         double sigma = initial_sigma;
         for (int j = 1; j < blur_levels; ++j) {
-            Mat new_img;
+            Mat new_img = Mat::zeros(pyr[i][j-1].size(), CV_32F);
             GaussianBlur(pyr[i][j-1], new_img, gaussian_kernel_size, sigma, 0);
             pyr[i].push_back(new_img);
             sigma *= blurring_factor;
+            //namedWindow("lena", CV_WINDOW_AUTOSIZE );
+            //imshow("lena", new_img);
+            //waitKey(0);
         }
         if (i+1 < nOctaves) {
             pyr.push_back(vector<Mat>());
@@ -65,56 +65,13 @@ void Sift::buildGaussianPyramid(Mat& image, vector< vector <Mat> >& pyr, int nOc
     }
 }
 
-double edge_ratio(Mat& dxxi, Mat& dxyi, Mat& dyyi, KeyPoint kp)
-{
-    Point p = kp.pt;
-    double dxx = (double) dxxi.at<uchar> (p.x, p.y);
-    double dyy = (double) dyyi.at<uchar> (p.x, p.y);
-    double dxy = (double) dxyi.at<uchar> (p.x, p.y);;
-    double thr = dxx + dyy;
-    double det = dxx * dyy - dxy*dxy;
-    /*cout<<"dxx: "<<dxx<<endl;
-    cout<<"dyy: "<<dyy<<endl;
-    cout<<"dxy: "<<dxy<<endl;
-    cout<<"thr: "<<thr<<endl;
-    cout<<"det: "<<det<<endl;
-    cout<<"Ratio: "<<thr * thr / det<<endl;*/
-    return det==0? 2000000000.0:thr * thr / det;
-}
-
-void Sift::cleanPoints(Mat& image, vector<KeyPoint>& keypoints, int curv_thr)
-{
-    cout<<"Size: "<<keypoints.size()<<endl;
-    Mat dxxi, dxyi, dyyi;
-    Sobel(image, dxxi, CV_16S, 2, 0);
-    Sobel(image, dyyi, CV_16S, 0, 2);
-    Sobel(image, dxyi, CV_16S, 1, 1);
-    vector<KeyPoint>::iterator it = keypoints.begin();
-    double principal_curvature_threshold_value = ((curv_thr+1.0)*(curv_thr+1.0)/curv_thr);
-    while (it != keypoints.end()){
-        double intensity_value = (double)image.at<uchar>(it->pt.x, it->pt.y) / 255.0;
-        double edge_ratio_value = edge_ratio(dxxi, dxyi, dyyi, *it);
-        if ((intensity_value < intensity_threshold) || (edge_ratio_value > principal_curvature_threshold_value)) {
-            it = keypoints.erase(it);
-        }
-        else {
-            it++;
-        }
-    }
-    cout<<"Size: "<<keypoints.size()<<endl;
-}
-
-//based on contrast //and principal curvature ratio
 Mat Sift::downSample(Mat& image)
 {
-    Size new_mat_size = image.size();
-    new_mat_size.width>>=1;
-    new_mat_size.height>>=1;
-    Mat new_image = Mat::zeros(new_mat_size, image.type());
+    Mat new_image = Mat::zeros(image.rows/2, image.cols/2, CV_32F);
     for (int i = 1; i < image.rows; i += 2) {
         int k = 0;
         for (int j = 1; j < image.cols; j += 2) {
-            new_image.at<uchar>(i>>1, k++) = image.at<uchar>(i, j);
+            new_image.at<float>(i>>1, k++) = image.at<float>(i, j);
         }
     }
     return new_image;
@@ -129,21 +86,17 @@ vector<vector<Mat> > Sift::buildDogPyr(vector<vector<Mat> > gauss_pyr)
             dog_pyr[i].push_back(gauss_pyr[i][j] - gauss_pyr[i][j+1]);
         }
     }
+    /*
     // <test_code>
     vector<KeyPoint> k;
     getScaleSpaceExtrema(dog_pyr, k);
     // <\test_code>
     imshow("img_above", dog_pyr[1][0]);
     imshow("img", dog_pyr[1][1]);
-    imshow("img_below", dog_pyr[1][2]);
+    imshow("img_below", dog_pyr[1][2]);*/
     return dog_pyr;
 }
 
-vector<double> Sift::computeOrientationHist(const Mat& image)
-{
-}
-
-// Calculates the gradient vector of the feature
 void Sift::getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoints)
 {
     for (int i = 0; i < dog_pyr.size(); i++) {
@@ -151,12 +104,12 @@ void Sift::getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>&
             for (int r = 1; r < dog_pyr[i][j].rows - 1; r++) {
                 for (int c = 1; c < dog_pyr[i][j].cols - 1; c++) {
                     if (isLocalExtrema(dog_pyr[i][j - 1], dog_pyr[i][j], dog_pyr[i][j + 1], r, c)) {
-                        float dx = ((float) dog_pyr[i][j].at<uchar>(r + 1,c) - (float) dog_pyr[i][j].at<uchar>(r - 1,c));
-                        float dy = ((float) dog_pyr[i][j].at<uchar>(r,c + 1) - (float) dog_pyr[i][j].at<uchar>(r,c - 1));
+                        float dx = (dog_pyr[i][j].at<float>(r + 1,c) - dog_pyr[i][j].at<float>(r - 1,c));
+                        float dy = (dog_pyr[i][j].at<float>(r,c + 1) - dog_pyr[i][j].at<float>(r,c - 1));
                         //cout<<"dx: "<<dx<<" dy:"<<dy<<endl;
                         float orientation = (float) atan(dy/dx);
                         float magnitude = (float) sqrt((dx*dx) + (dy*dy));
-                        KeyPoint key_point(r, c, 3, orientation, magnitude, i + 1);
+                        KeyPoint key_point(r, c, 3, orientation, magnitude, i, j);
                         keypoints.push_back(key_point);
                     }
                 }
@@ -170,7 +123,7 @@ void Sift::getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>&
             cout<< keypoints[i].response<<endl;
         }
     }
-    imshow("bla", myMat);
+    //imshow("bla", myMat);
 
 }
 
@@ -179,13 +132,62 @@ bool Sift::isLocalExtrema(Mat& img_above, Mat& img, Mat& img_below, int x, int y
     int dy[9] = { 1,1,1, 0,0,0,-1,-1,-1};
     int dx_same_level[9] = {-1,0,1,-1,-1,1,-1, 0, 1};
     int dy_same_level[9] = { 1,1,1, 0, 1,0,-1,-1,-1};
-    int val = (int) img.at<uchar>(x,y);
+    float val = img.at<float>(x,y);
     for (int i = 0; i < ARRAY_SIZE(dx); i++) {
-        if ((int) img.at<uchar>(x + dx_same_level[i], y + dy_same_level[i]) >= val ||
-            (int) img_above.at<uchar>(x + dx[i], y + dy[i]) >= val ||
-            (int) img_below.at<uchar>(x + dx[i], y + dy[i]) >= val) {
+        if ((img.at<float>(x + dx_same_level[i], y + dy_same_level[i]) >= val ||
+            img_above.at<float>(x + dx[i], y + dy[i]) >= val ||
+            img_below.at<float>(x + dx[i], y + dy[i]) >= val) &&
+            (img.at<float>(x + dx_same_level[i], y + dy_same_level[i]) <= val ||
+            img_above.at<float>(x + dx[i], y + dy[i]) <= val ||
+            img_below.at<float>(x + dx[i], y + dy[i]) <= val)) {
                 return false;
             }
     }
     return true;
+}
+
+void Sift::cleanPoints(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoints, int curv_thr)
+{
+    cout<<"Size Initial: "<<keypoints.size()<<endl;
+    vector<KeyPoint>::iterator it = keypoints.begin();
+    double principal_curvature_threshold_value = ((curv_thr+1.0)*(curv_thr+1.0)/curv_thr);
+    while (it != keypoints.end()){
+        float intensity_value = abs(dog_pyr[it->octave][it->class_id].at<float>(it->pt.x, it->pt.y));
+        if (intensity_value < intensity_threshold){
+            it = keypoints.erase(it);
+        }
+        else {
+            it++;
+        }
+    }
+    cout<<"Size Intensity: "<<keypoints.size()<<endl;
+    it = keypoints.begin();
+    while (it != keypoints.end()){
+        int x = it->pt.x;
+        int y = it->pt.y;
+        float dxx = dog_pyr[it->octave][it->class_id].at<float>(x-1, y) * 1 +
+                    dog_pyr[it->octave][it->class_id].at<float>(x, y) * -2 +
+                    dog_pyr[it->octave][it->class_id].at<float>(x+1, y) * 1;
+        float dyy = dog_pyr[it->octave][it->class_id].at<float>(x, y-1) * 1 +
+                    dog_pyr[it->octave][it->class_id].at<float>(x, y) * -2 +
+                    dog_pyr[it->octave][it->class_id].at<float>(x, y+1) * 1;
+        float dxy = (dog_pyr[it->octave][it->class_id].at<float>(x-1, y-1) * 1 +
+                    dog_pyr[it->octave][it->class_id].at<float>(x+1, y-1) * -1 +
+                    dog_pyr[it->octave][it->class_id].at<float>(x-1, y+1) * -1 +
+                    dog_pyr[it->octave][it->class_id].at<float>(x+1, y+1) * 1) / 4.0;
+        float thr = dxx + dyy;
+        float det = dxx * dyy - dxy*dxy;
+        float curvature = thr * thr / det;
+        if (curvature  > principal_curvature_threshold_value){
+            it = keypoints.erase(it);
+        }
+        else {
+            it++;
+        }
+    }
+    cout<<"Size Final: "<<keypoints.size()<<endl;
+}
+
+vector<double> Sift::computeOrientationHist(const Mat& image)
+{
 }

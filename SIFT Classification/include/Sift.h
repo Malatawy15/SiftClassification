@@ -8,20 +8,21 @@ using namespace cv;
 class Sift
 {
     public:
-        Mat input_image;
         Sift();
-        Sift(string image_path, bool is_color);
         virtual ~Sift();
-        void findSiftInterestPoint( Mat& image, vector<KeyPoint>& keypoints);
 
-        void buildGaussianPyramid( Mat& image, vector< vector <Mat> >& pyr, int nOctaves );
-        void cleanPoints(Mat& image, vector<KeyPoint>& keypoints, int curv_thr );
-        //based on contrast //and principal curvature ratio
+        void findSiftInterestPoint(Mat& image, vector<KeyPoint>& keypoints);
+
+        void buildGaussianPyramid(Mat& image, vector<vector<Mat> >& pyr, int nOctaves);
         Mat downSample(Mat& image);
         vector<vector<Mat> > buildDogPyr(vector<vector<Mat> > gauss_pyr);
-        vector<double> computeOrientationHist(const Mat& image);
-        // Calculates the gradient vector of the feature
+
         void getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoints);
+
+        void cleanPoints(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoints, int curv_thr);
+
+        vector<double> computeOrientationHist(const Mat& image);
+
     protected:
     private:
         bool isLocalExtrema(Mat& img_above, Mat& img, Mat& img_below, int x, int y);

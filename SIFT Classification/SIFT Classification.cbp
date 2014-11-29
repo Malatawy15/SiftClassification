@@ -57,6 +57,9 @@
 		<Linker>
 			<Add option="`opencv-config --ldstaticflags`" />
 		</Linker>
+		<Unit filename="../../../test.cpp">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
 		<Unit filename="include/Sift.h" />
 		<Unit filename="lena.jpg" />
 		<Unit filename="main.cpp" />
