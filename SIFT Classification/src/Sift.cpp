@@ -25,7 +25,16 @@ Sift::~Sift()
 {
     //dtor
 }
-
+/*
+@params:
+    image: input image
+    keypoints: output keypoints
+@description:
+    Function that linearly calls all othe helper functions to
+    run the sift algorithm.
+@return
+    -
+*/
 void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>& keypoints)
 {
     vector<vector<Mat> > pyr;
@@ -35,6 +44,18 @@ void Sift::findSiftInterestPoint(Mat& image, vector<KeyPoint>& keypoints)
     cleanPoints(dog_pyramid, keypoints, Sift::principal_curvature_threshold);
 }
 
+/*
+@params:
+    image: input image
+    pyr: output gaussian pyramid
+    nOctaves: number of octaves produced
+@description:
+    Creates the gaussian pyramid from the input image. Downsamples the input image
+    the number of times specified by the global variable "blur-levels". Moreover
+    the number of octaves created are equal to the input nOctaves
+@return:
+    -
+*/
 void Sift::buildGaussianPyramid(Mat& image, vector<vector<Mat> >& pyr, int nOctaves)
 {
     pyr.push_back(vector<Mat>());
@@ -57,6 +78,15 @@ void Sift::buildGaussianPyramid(Mat& image, vector<vector<Mat> >& pyr, int nOcta
     }
 }
 
+/*
+@params:
+    image: input image to be down sampled
+@description:
+    Downsamples the the input image to half it's
+    height and width
+@return:
+    Mat: output matrix containing the downsampled image
+*/
 Mat Sift::downSample(Mat& image)
 {
     Mat new_image = Mat::zeros(image.rows/2, image.cols/2, CV_32F);
@@ -69,6 +99,16 @@ Mat Sift::downSample(Mat& image)
     return new_image;
 }
 
+/*
+@params:
+    gauss_pyr: A vector (representing octaves) including a vector (containing
+               the blur levels) of images
+@description:
+    Subtracts each image in the gaussian pyramid from the image bellow it in
+    the vector of blur levels.
+@return:
+    vector<vector<Mats> >: contains each difference of gaussian
+*/
 vector<vector<Mat> > Sift::buildDogPyr(vector<vector<Mat> > gauss_pyr)
 {
     vector<vector<Mat> > dog_pyr;
@@ -78,17 +118,27 @@ vector<vector<Mat> > Sift::buildDogPyr(vector<vector<Mat> > gauss_pyr)
             dog_pyr[i].push_back(gauss_pyr[i][j] - gauss_pyr[i][j+1]);
         }
     }
-    /*
+
     // <test_code>
-    vector<KeyPoint> k;
-    getScaleSpaceExtrema(dog_pyr, k);
+    //vector<KeyPoint> k;
+    //getScaleSpaceExtrema(dog_pyr, k);
     // <\test_code>
-    imshow("img_above", dog_pyr[1][0]);
-    imshow("img", dog_pyr[1][1]);
-    imshow("img_below", dog_pyr[1][2]);*/
+    //imshow("img_above", dog_pyr[1][0]);
+    //imshow("img", dog_pyr[1][1]);
+    //imshow("img_below", dog_pyr[1][2]);
     return dog_pyr;
 }
 
+/*
+@params:
+    dog_pyr: input difference of gaussian pyramid
+    keypoints: output maxima and minima keypoints
+@description:
+    Returns a vector of keypoints containing any point that is an extrema
+    in it's surrounding 27 pixels
+@return:
+    -
+*/
 void Sift::getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoints)
 {
     for (int i = 0; i < dog_pyr.size(); i++) {
@@ -116,9 +166,22 @@ void Sift::getScaleSpaceExtrema(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>&
         }
     }
     //imshow("bla", myMat);
-
 }
 
+/*
+@params:
+    img_above: The image above our candidate image blur level
+    img: The candidate image
+    img_below: The image below the candidate image
+    x: x-coordinate of candidate pixel
+    y: y-coordinate of candidate pixel
+@description:
+    Helper method for getScaleSpaceExtrema. Determines whether the
+    candidate pixel is an extreme in the 8 pixels in it's own image
+    and the 9 pixels in both the image above and elow it.
+@return:
+    bool: returns whether the pixel is an extrema or not.
+*/
 bool Sift::isLocalExtrema(Mat& img_above, Mat& img, Mat& img_below, int x, int y) {
     int dx[9] = {-1,0,1,-1,0,1,-1, 0, 1};
     int dy[9] = { 1,1,1, 0,0,0,-1,-1,-1};
@@ -138,6 +201,19 @@ bool Sift::isLocalExtrema(Mat& img_above, Mat& img, Mat& img_below, int x, int y
     return true;
 }
 
+/*
+@params:
+    dog_pyr: The difference of gaussian pyramid
+    keypoints: The candidate keypoints. Filtering happens in place
+    curv_thr: The principal curvature threshold "r"
+@description:
+    This method cleans the vector of candidate keypoints by filtering out the points
+    that are less than the contrast threshold then filters out the poorly localized
+    keypoints by calculating the equation TH(r)^2 / Det(r) then comparing it to the
+    principal curvature threshold using the equation (r+1)^2 / r.
+@return:
+    void - filtering keypoints happens in place in the vector keypoints
+*/
 void Sift::cleanPoints(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoints, int curv_thr)
 {
     cout<<"Size Initial: "<<keypoints.size()<<endl;
@@ -180,6 +256,15 @@ void Sift::cleanPoints(vector<vector<Mat> >& dog_pyr, vector<KeyPoint>& keypoint
     cout<<"Size Final: "<<keypoints.size()<<endl;
 }
 
+/*
+@params:
+    image: input image
+    keypoints: vector of filtered keypoints for the image
+@description:
+    Returns orientation histogram for the image
+@return:
+    vector<double>: contains the descriptors for all the keypoints.
+*/
 vector<double> Sift::computeOrientationHist(const Mat& image, vector<KeyPoint>& keypoints)
 {
     vector<double> result;
@@ -192,7 +277,17 @@ vector<double> Sift::computeOrientationHist(const Mat& image, vector<KeyPoint>& 
     return result;
 }
 
-bool Sift::computeOrientationHistAtPoint(const Mat& image, int x, int y, vector<double>& descriptor)
+/*
+@params:
+    image: input image
+    x: x-coordinate of the keypoint
+    y: y-coordinate of the keypoint
+    descriptors: 128 descriptor of the keypoint
+@description:
+    Calculates the descriptors of a single keypoint
+@return:
+    bool: whether or not the histogram is computable for this pixel
+*/bool Sift::computeOrientationHistAtPoint(const Mat& image, int x, int y, vector<double>& descriptor)
 {
     int maxX = image.size().width;
     int maxY = image.size().height;
@@ -215,6 +310,17 @@ bool Sift::computeOrientationHistAtPoint(const Mat& image, int x, int y, vector<
     }
 }
 
+/*
+@params:
+    image: input image
+    x: x-coordinate of keypoint quartile
+    y: y-coordinate of keypoint quartile
+@description:
+    computes an 8-bin histogram of descriptors on the
+    quartile of the 16x16 pixels surrounding the keypoint
+@return:
+    vector<double>: 8-bin histogram of descriptors
+*/
 vector<double> Sift::computePartialHistogram(const Mat& image, int x, int y)
 {
     vector<double> result;

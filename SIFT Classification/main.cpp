@@ -32,14 +32,11 @@ int main(int argc, char *argv[])
     Sift sift;
     vector<KeyPoint> kp;
     sift.findSiftInterestPoint(norm, kp);
-    /*vector<double> vd = sift.computeOrientationHist(norm, kp);
-    for (int i=0;i<vd.size();i++)
-        cout<<vd[i]<<endl;*/
     int sum = 0;
     for (int i=0;i<kp.size();i++) {
         if (kp[i].octave==0) {
             sum++;
-            gimg.at<uchar>(kp[i].pt.x, kp[i].pt.y) = 255;
+            circle(gimg, Point(kp[i].pt.y,kp[i].pt.x),1, Scalar(255,255,255));
         }
     }
     cout<<"Sum: "<<sum<<endl;
